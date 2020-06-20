@@ -3,6 +3,7 @@
     width: 100%;
     height: 600px;
     background-image: url('../images/sky.png');
+    overflow: hidden;
     /* 文字不被选中 */
     -webkit-user-select:none;
    -moz-user-select:none;
@@ -18,6 +19,7 @@
     width: 30px;
     height: 30px;
     background-image: url('../images/birds.png');
+    transition: top .3s linear;
 }
 /* 点击开始 */
 .start {
@@ -32,6 +34,7 @@
     font-size: 30px;
     font-weight: bolder;
     cursor:pointer;
+    transition: all .3s linear;
 }
 /* 变白 */
 .start.start-white {
@@ -51,6 +54,8 @@
     font-size: 24px;
     color: #fff;
     font-weight: bolder;
+    display: none;
+    z-index: 10;
 }
 /* 遮罩层 */
 .mask {
@@ -61,6 +66,7 @@
     right: 0;
     background: #000;
     opacity: .7;
+    display: none;
 }
 /* 游戏结束画面 */
 .end {
@@ -69,6 +75,7 @@
     left: 50%;
     transform: translateX(-50%);
     text-align: center;
+    display: none;
 }
 
 .end .over {
@@ -134,4 +141,5 @@
     color: #09f;
     font-size: 18px;
     font-weight: bolder;
+    cursor:pointer;
 }
