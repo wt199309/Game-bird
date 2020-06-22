@@ -11,12 +11,21 @@ var bird = {
     startFlag: false,
     minTop: 0,
     maxTop: 570,
+    pipeLength: 7,
+    pipeArr: [],
+    score: 0,
+    pipeLastIndex: 6,
+    // scoreArr: [],
 
     // 初始化函数
     init: function () {
         this.initData();
         this.animate();
         this.handle();
+
+        if(sessionStorage.getItem('play')) {
+            this.start();
+        }
     },
 //initData
     initData: function () {
@@ -26,16 +35,31 @@ var bird = {
         this.oScore = this.el.getElementsByClassName('score')[0];
         this.oMask = this.el.getElementsByClassName('mask')[0];
         this.oEnd = this.el.getElementsByClassName('end')[0];
+        this.oFinalScore = this.oEnd.getElementsByClassName('final-score')[0];
+        this.oRankList = this.oEnd.getElementsByClassName('rank-list')[0];
+        this.oRestart = this.oEnd.getElementsByClassName('restart')[0];
         
+        
+        
+        this.scoreArr = this.getScore();
+
+    },
+    getScore: function () {
+        var scoreArr = getLocal('score');//键值不存在 值为null
+        return scoreArr ? scoreArr : [];
     },
     //管理所有动画函数
     animate: function () {
         var self = this,
             count = 0;
         this.timer = setInterval(function(){
+            // 天空
             self.skyMove();
+            // 柱子
+            
             if(self.startFlag) {
                 self.birdDrop();
+                self.pipeMove();
             }
             if(++ count % 10 === 0) {
                 if(!self.startFlag) {
@@ -70,6 +94,26 @@ var bird = {
        this.birdTop += ++ this.birdStepY;
        this.oBird.style.top = this.birdTop + 'px';
         this.judgeKnock();
+        this.addScore();
+    },
+
+    // 柱子移动
+    pipeMove: function() {
+        for(var i = 0; i < this.pipeLength; i++) {
+            var oUpPipe = this.pipeArr[i].up;
+            var oDownPipe = this.pipeArr[i].down;
+            var x = oUpPipe.offsetLeft - this.skyStep;
+
+            if(x < - 52) {
+                var lastPipeLeft = this.pipeArr[this.pipeLastIndex].up.offsetLeft;
+                oUpPipe.style.left = lastPipeLeft + 300 + 'px';
+                oDownPipe.style.left = lastPipeLeft + 300 + 'px';
+                this.pipeLastIndex = ++ this.pipeLastIndex % this.pipeLength;
+                continue;
+            }
+            oUpPipe.style.left = x + 'px';
+            oDownPipe.style.left = x + 'px';
+        }
     },
     //文字变大变小
     startBound: function () {
@@ -90,31 +134,157 @@ var bird = {
         };
     },
     // 柱子碰撞检测
-    judgePipe: function () {},
+    judgePipe: function () {
+        //相遇 pipex = 95 离开 pipex = 13
+        //柱子高度
+        var index = this.score % this.pipeLength;
+        var pipeX = this.pipeArr[index].up.offsetLeft;
+        var pipeY = this.pipeArr[index].y;
+        var birdY = this.birdTop;
+        //小鸟高度
+
+
+        if((pipeX <= 95 && pipeX >= 13) && (birdY <= pipeY[0] || birdY >= pipeY[1])) {
+            this.failGame();
+        }
+    },
+    //无碰撞加分
+    addScore: function () {
+        var index = this.score % this.pipeLength;
+        var pipeX = this.pipeArr[index].up.offsetLeft;
+        if(pipeX < 13) {
+            this.oScore.innerText = ++ this.score;
+        }
+    },
     // 点击事件
     handle: function (){
         this.handleStart();
-        
+        this.handleClick();
+        this.handleRestart();
     },
     // 点击开始游戏
     handleStart: function() {
-        self = this;
-        this.oStart.onclick = function () {
-            self.startFlag = true;
-            self.oStart.style.display = 'none';
-            self.oScore.style.display = 'block';
-            self.oBird.style.left = '80px';
-            self.skyStep = 5;
+        var self = this;
+        this.oStart.onclick = this.start.bind(this);
+    },
+    start: function () {
+        var self = this;
+        self.startFlag = true;
+        self.oStart.style.display = 'none';
+        self.oBird.style.transition = 'none';
+        self.oScore.style.display = 'block';
+        self.oBird.style.left = '80px';
+        self.skyStep = 5;
+        // 柱子之间的宽度
+        for(var i = 0; i < self.pipeLength; i++) {
+            self.createPipe(300 * (i + 1));
+
         };
+    },
+    handleClick: function () {
+        var self = this;
+        this.el.onclick = function (e) {
+            if(!e.target.classList.contains('start')) {
+                self.birdStepY = -10;
+            };
+        };
+    },
+    // 重新开始
+    handleRestart: function () {
+        this.oRestart.onclick = function () {
+            sessionStorage.setItem('play',true);
+            window.location.reload();
+            
+        }
+    },
+    
+    //创建柱子和高度
+    createPipe: function (x) {
+        var upHeight = 50 + Math.floor(Math.random() * 175);
+        var downHeight = 600 - 150 - upHeight;
+        // 创建柱子dom 因为要创建多个dom元素耦合率高故封装一个cerateEle()函数生成dom元素，一般放在utils.js文件中。
+        // var oDiv = document.createElement('div');
+        // oDiv.classList.add('pipe');
+        // oDiv.classList.add('pipe-up');
+        // oDiv.style.height = upHeight + 'px';
+        var oUpPipe = createEle('div',['pipe','pipe-up'],{'height': upHeight + 'px', 'left' : x + 'px'});
+        var oDownPipe = createEle('div',['pipe','pipe-bottom'],{'height' : downHeight + 'px', 'left' : x + 'px'});
+        // // 将柱子插入父元素
+        this.el.appendChild(oUpPipe);
+        this.el.appendChild(oDownPipe);
+
+        this.pipeArr.push({
+            up: oUpPipe,
+            down: oDownPipe,
+            y: [upHeight,upHeight + 150],
+        })
+    },
+    //
+    setScore: function () {
+        this.scoreArr.push({
+            score: this.score,
+            time: this.getDate(),
+        });
+
+        //分数排名
+        this.scoreArr.sort(function (a,b) {
+            return b.score - a.score;
+        });
+
+        //
+    setLocal('score',this.scoreArr);
+    },
+    //获取时间
+    getDate: function () {
+        var d = new Date();
+        var year = d.getFullYear();
+        var month = formatNum(d.getMonth() + 1);
+        var day = formatNum(d.getDate());
+        var hour = formatNum(d.getHours());
+        var minute = formatNum(d.getMinutes());
+        var second = formatNum(d.getSeconds());
+
+        return `${year}.${month}.${day} ${hour}:${minute}:${second}`;
     },
     // 游戏失败
     failGame: function () {
         clearInterval(this.timer);
+        this.setScore();
         this.oMask.style.display = 'block';
         this.oEnd.style.display = 'block';
         this.oBird.style.display = 'none';
         this.oScore.style.display = 'none';
+        this.oFinalScore.innerText = this.score;
+        this.renderRankList();
     },
+    renderRankList: function () {
+        var template = '';
+
+
+        for(var i = 0; i < 8; i ++) {
+            var degreeClass = '';
+            switch(i) {
+                case 0:
+                    degreeClass = 'first';
+                    break;
+                    case 1:
+                        degreeClass = 'second';
+                        break;
+                        case 2:
+                            degreeClass = 'third';
+                            break;
+                        }
+            template += `
+            <li class="rank-item">
+                <span class="rank-degree ${degreeClass}">${i + 1}</span>
+                <span class="rank-score">${this.scoreArr[i].score}</span>
+                <span class="rank-time">${this.scoreArr[i].time}</span>
+            </li>
+        `
+        };
+        this.oRankList.innerHTML = template;
+    },
+
 };
 
 bird.init();
